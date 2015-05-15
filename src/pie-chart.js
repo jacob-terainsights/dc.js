@@ -41,6 +41,7 @@ dc.pieChart = function (parent, chartGroup) {
     var _emptyTitle = 'empty';
 
     var _radius,
+        _autoRadius = true,
         _innerRadius = 0;
 
     var _g;
@@ -84,7 +85,12 @@ dc.pieChart = function (parent, chartGroup) {
 
     function drawChart() {
         // set radius on basis of chart dimension if missing
-        _radius = _radius ? _radius : d3.min([_chart.width(), _chart.height()]) / 2;
+
+        _radius = !_autoRadius && _radius ? _radius : d3.min([_chart.width(), _chart.height()]) /2;
+
+	    // recompute colors if needed
+	    if (_chart.elasticColor())
+	        _chart.calculateColorDomain();
 
         var arc = buildArcs();
 
@@ -268,7 +274,7 @@ dc.pieChart = function (parent, chartGroup) {
     /**
     #### .radius([radius])
     Get or set the outer radius. If the radius is not set, it will be half of the minimum of the
-    chart width and height.
+    chart width and height. Default radius is auto radius if set to 0, activates auto radius computation
 
     **/
     _chart.radius = function (r) {
@@ -276,6 +282,7 @@ dc.pieChart = function (parent, chartGroup) {
             return _radius;
         }
         _radius = r;
+        _autoRadius = (_radius == 0);
         return _chart;
     };
 

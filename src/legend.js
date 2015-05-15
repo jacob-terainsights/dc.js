@@ -14,6 +14,7 @@ Examples:
 **/
 dc.legend = function () {
     var LABEL_GAP = 2;
+    var LABEL_MARGIN = 20;
 
     var _legend = {},
         _parent,
@@ -21,6 +22,8 @@ dc.legend = function () {
         _y = 0,
         _itemHeight = 12,
         _gap = 5,
+        _areaWidth = 100,
+        _areaHeight = 100,
         _horizontal = false,
         _legendWidth = 560,
         _itemWidth = 70,
@@ -38,9 +41,14 @@ dc.legend = function () {
 
     _legend.render = function () {
         _parent.svg().select('g.dc-legend').remove();
+
         _g = _parent.svg().append('g')
             .attr('class', 'dc-legend')
-            .attr('transform', 'translate(' + _x + ',' + _y + ')');
+            .attr('transform', 'translate(' + _x + ',' + _y + ')')
+            .on("mousedown", function(){
+                _parent.dragObject = _legend;
+            });
+
         var legendables = _parent.legendables();
 
         var itemEnter = _g.selectAll('g.dc-legend-item')
@@ -135,6 +143,42 @@ dc.legend = function () {
         }
         _y = y;
         return _legend;
+    };
+
+    /**
+    ### .areaWidth(width)
+    Set the width of the area in which the legend gets displayed 
+    **/
+    _legend.areaWidth = function (_) {
+        if (!arguments.length) return _areaWidth;
+	_x = _x / _areaWidth * _;
+        _areaWidth = _;
+        return _legend;
+    };
+
+    /**
+    ### .areaHeight(width)
+    Set the width of the area in which the legend gets displayed 
+    **/
+    _legend.areaHeight = function (_) {
+        if (!arguments.length) return _areaHeight;
+	_y = _y / _areaHeight * _;
+        _areaHeight = _;
+
+        return _legend;
+    };
+
+    /**
+    ### .moveBy(dx, dy)
+    Move legend by given increment
+    **/
+    _legend.moveBy = function (dx, dy){
+	    _x += dx;
+	    _y += dy;
+	    _x = dc.utils.clamp(_x|0, 0, _areaWidth-LABEL_MARGIN);
+	    _y = dc.utils.clamp(_y|0, 0, _areaHeight-LABEL_MARGIN);
+	    if (_g)
+	        _g.attr("transform", "translate(" + _x + "," + _y + ")");
     };
 
     /**
