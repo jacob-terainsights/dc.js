@@ -24,7 +24,7 @@ dc.marginMixin = function (_chart) {
         if (!arguments.length) {
             return _margin;
         }
-        _margin = m;
+        _margin = { top: m.top, right: m.right, bottom: m.bottom, left:m.left}; // Deep copy
         return _chart;
     };
 

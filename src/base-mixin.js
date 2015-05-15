@@ -99,6 +99,7 @@ dc.baseMixin = function (_chart) {
             return _width(_root.node());
         }
         _width = d3.functor(w || _defaultWidth);
+        if (_legend) _legend.areaWidth(w);
         return _chart;
     };
 
@@ -128,6 +129,7 @@ dc.baseMixin = function (_chart) {
             return _height(_root.node());
         }
         _height = d3.functor(h || _defaultHeight);
+        if (_legend) _legend.areaWidth(w);
         return _chart;
     };
 
@@ -1050,7 +1052,10 @@ dc.baseMixin = function (_chart) {
             return _legend;
         }
         _legend = l;
-        _legend.parent(_chart);
+        _legend.parent(_chart)
+            .areaWidth(_chart.width())
+	        .areaHeight(_chart.height());
+
         return _chart;
     };
 
