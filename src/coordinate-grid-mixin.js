@@ -13,6 +13,7 @@ dc.coordinateGridMixin = function (_chart) {
     var Y_AXIS_LABEL_CLASS = 'y-axis-label';
     var X_AXIS_LABEL_CLASS = 'x-axis-label';
     var DEFAULT_AXIS_LABEL_PADDING = 12;
+    var MIN_MARGIN_SIZE = 5;
 
     _chart = dc.colorMixin(dc.marginMixin(dc.baseMixin(_chart)));
 
@@ -954,6 +955,21 @@ dc.coordinateGridMixin = function (_chart) {
         return _chart;
     };
 
+    function detectMargins(ev){
+	    var m = _chart.margins(); 
+	    var e = { x: ev.offsetX, y: ev.offsetY };
+	    if (e.x <= m.left)
+	        return "left";
+	    else if (e.x >= _chart.width()-m.right)
+	        return "right";
+	    else if (e.y <= m.top )
+	        return "top";
+	    else if (e.y >= _chart.height()-m.bottom )
+	        return "bottom";
+	    else
+	        return null;
+    }
+
     function generateClipPath() {
         var defs = dc.utils.appendOrSelect(_parent, 'defs');
         // cannot select <clippath> elements; bug in WebKit, must select by id
@@ -968,6 +984,66 @@ dc.coordinateGridMixin = function (_chart) {
             .attr('height', _chart.yAxisHeight() + padding)
             .attr('transform', 'translate(-' + _clipPadding + ', -' + _clipPadding + ')');
     }
+
+	var activeMargin = null;
+	var drag = d3.behavior.drag()
+	        .origin(Object)
+	        .on("dragstart", function(d){
+		        activeMargin = detectMargins(d3.event.sourceEvent);
+	        })
+	        .on("drag", function(d){
+		        if (_chart.dragObject){
+		            _chart.dragObject.moveBy(d3.event.dx, d3.event.dy);
+		            return;
+		        }
+		        switch (activeMargin){
+		        case "left":  
+		            _chart.margins().left += d3.event.dx;  
+		            _chart.margins().left = dc.utils.clamp(
+			            _chart.margins().left, MIN_MARGIN_SIZE,
+			            _chart.width()-_chart.margins().right-MIN_MARGIN_SIZE);
+		            break;
+		        case "right":  
+		            _chart.margins().right -= d3.event.dx; 
+		            _chart.margins().right = dc.utils.clamp(
+			            _chart.margins().right, MIN_MARGIN_SIZE,
+			            _chart.width()-_chart.margins().left-MIN_MARGIN_SIZE);
+		            break;
+		        case "top":  
+		            _chart.margins().top += d3.event.dy; 
+		            _chart.margins().top = dc.utils.clamp(
+			            _chart.margins().top, MIN_MARGIN_SIZE,
+			            _chart.height()-_chart.margins().bottom-MIN_MARGIN_SIZE);
+		            break;
+		        case "bottom":  
+		            _chart.margins().bottom -= d3.event.dy; 
+		            _chart.margins().bottom = dc.utils.clamp(
+			            _chart.margins().bottom, MIN_MARGIN_SIZE,
+			            _chart.height()-_chart.margins().top-MIN_MARGIN_SIZE);
+		            break;
+		        }
+
+		        if (activeMargin) _chart.render();
+		        return;
+	        })
+	        .on("dragend", function(){ _chart.dragObject = null; });
+	
+	_chart.svg().call(drag);
+
+	// change cursor depending on the region 
+	_chart.svg().on("mousemove", function(){
+	    var m = detectMargins(d3.event);
+	    var el = d3.select(this);
+	    if (_chart.dragObject)
+		    el.style("cursor", "move");
+	    else switch (m) {
+	    case "left": el.style("cursor", "e-resize"); break;
+	    case "right": el.style("cursor", "w-resize"); break;
+	    case "bottom": el.style("cursor", "n-resize"); break;
+	    case "top": el.style("cursor", "s-resize"); break;
+	    default: el.style("cursor", "default");
+	    }
+	});
 
     _chart._preprocessData = function () {};
 
@@ -988,6 +1064,9 @@ dc.coordinateGridMixin = function (_chart) {
 
     _chart._doRedraw = function () {
         _chart._preprocessData();
+        
+        if (_chart.elasticColor())
+	        _chart.calculateColorDomain();
 
         drawChart(false);
         generateClipPath();
