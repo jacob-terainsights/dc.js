@@ -606,6 +606,9 @@ accessor.</p>
 <span class="hljs-comment">// color accessor for a multi-value crossfilter reduction</span>
 .colorAccessor(<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-params">(d)</span></span>{<span class="hljs-keyword">return</span> d.value.absGain;})
 </code></pre>
+<h4 id="-elasticc-boolean-">.elasticC([boolean])</h4>
+<p>Turn on/off elastic colors. If color elasticity is turned on, then the color chart will attempt to generate and
+recalculate color range whenever redraw event is triggered.</p>
 <h4 id="-colordomain-domain-">.colorDomain([domain])</h4>
 <p>Set or get the current domain for the color mapping function. The domain must be supplied as an
 array.</p>
@@ -905,7 +908,7 @@ The resulting data will still be sorted by .ordering (default by key).</p>
 pie chart will be rendered as a doughnut chart. Default inner radius is 0px.</p>
 <h4 id="-radius-radius-">.radius([radius])</h4>
 <p>Get or set the outer radius. If the radius is not set, it will be half of the minimum of the
-chart width and height.</p>
+chart width and height. Default radius is auto radius if set to 0, activates auto radius computation</p>
 <h4 id="-cx-cx-">.cx([cx])</h4>
 <p>Get or set center x coordinate position. Default is center of svg.</p>
 <h4 id="-cy-cy-">.cy([cy])</h4>
@@ -1562,6 +1565,12 @@ labels.</p>
 <p>Set or get x coordinate for legend widget. Default: 0.</p>
 <h4 id="-y-value-">.y([value])</h4>
 <p>Set or get y coordinate for legend widget. Default: 0.</p>
+<h3 id="-areawidth-width-">.areaWidth(width)</h3>
+<p>Set the width of the area in which the legend gets displayed</p>
+<h3 id="-areaheight-width-">.areaHeight(width)</h3>
+<p>Set the width of the area in which the legend gets displayed</p>
+<h3 id="-moveby-dx-dy-">.moveBy(dx, dy)</h3>
+<p>Move legend by given increment</p>
 <h4 id="-gap-value-">.gap([value])</h4>
 <p>Set or get gap between legend items. Default: 5.</p>
 <h4 id="-itemheight-value-">.itemHeight([value])</h4>

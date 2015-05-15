@@ -749,6 +749,7 @@ dc.baseMixin = function (_chart) {
             return _width(_root.node());
         }
         _width = d3.functor(w || _defaultWidth);
+        if (_legend) _legend.areaWidth(w);
         return _chart;
     };
 
@@ -778,6 +779,7 @@ dc.baseMixin = function (_chart) {
             return _height(_root.node());
         }
         _height = d3.functor(h || _defaultHeight);
+        if (_legend) _legend.areaWidth(w);
         return _chart;
     };
 
@@ -1700,7 +1702,10 @@ dc.baseMixin = function (_chart) {
             return _legend;
         }
         _legend = l;
-        _legend.parent(_chart);
+        _legend.parent(_chart)
+            .areaWidth(_chart.width())
+	        .areaHeight(_chart.height());
+
         return _chart;
     };
 
@@ -1794,7 +1799,7 @@ dc.marginMixin = function (_chart) {
         if (!arguments.length) {
             return _margin;
         }
-        _margin = m;
+        _margin = { top: m.top, right: m.right, bottom: m.bottom, left:m.left}; // Deep copy
         return _chart;
     };
 
@@ -1821,6 +1826,7 @@ dc.colorMixin = function (_chart) {
     var _defaultAccessor = true;
 
     var _colorAccessor = function (d) { return _chart.keyAccessor()(d); };
+    var _cElasticity = false;
 
     /**
     #### .colors([colorScale])
@@ -1892,6 +1898,19 @@ dc.colorMixin = function (_chart) {
         _defaultAccessor = false;
         return _chart;
     };
+
+    /**
+    #### .elasticC([boolean])
+    Turn on/off elastic colors. If color elasticity is turned on, then the color chart will attempt to generate and
+    recalculate color range whenever redraw event is triggered.
+
+    **/
+    _chart.elasticColor = function (_) {
+        if (!arguments.length) return _cElasticity;
+        _cElasticity = _;
+        return _chart;
+    };
+
 
     // what is this?
     _chart.defaultColorAccessor = function () {
@@ -1967,6 +1986,7 @@ dc.coordinateGridMixin = function (_chart) {
     var Y_AXIS_LABEL_CLASS = 'y-axis-label';
     var X_AXIS_LABEL_CLASS = 'x-axis-label';
     var DEFAULT_AXIS_LABEL_PADDING = 12;
+    var MIN_MARGIN_SIZE = 5;
 
     _chart = dc.colorMixin(dc.marginMixin(dc.baseMixin(_chart)));
 
@@ -2908,6 +2928,21 @@ dc.coordinateGridMixin = function (_chart) {
         return _chart;
     };
 
+    function detectMargins(ev){
+	    var m = _chart.margins(); 
+	    var e = { x: ev.offsetX, y: ev.offsetY };
+	    if (e.x <= m.left)
+	        return "left";
+	    else if (e.x >= _chart.width()-m.right)
+	        return "right";
+	    else if (e.y <= m.top )
+	        return "top";
+	    else if (e.y >= _chart.height()-m.bottom )
+	        return "bottom";
+	    else
+	        return null;
+    }
+
     function generateClipPath() {
         var defs = dc.utils.appendOrSelect(_parent, 'defs');
         // cannot select <clippath> elements; bug in WebKit, must select by id
@@ -2922,11 +2957,71 @@ dc.coordinateGridMixin = function (_chart) {
             .attr('height', _chart.yAxisHeight() + padding)
             .attr('transform', 'translate(-' + _clipPadding + ', -' + _clipPadding + ')');
     }
-
+	
     _chart._preprocessData = function () {};
 
     _chart._doRender = function () {
         _chart.resetSvg();
+
+        var activeMargin = null;
+	    var drag = d3.behavior.drag()
+	            .origin(Object)
+	            .on("dragstart", function(d){
+		            activeMargin = detectMargins(d3.event.sourceEvent);
+	            })
+	            .on("drag", function(d){
+		            if (_chart.dragObject){
+		                _chart.dragObject.moveBy(d3.event.dx, d3.event.dy);
+		                return;
+		            }
+		            switch (activeMargin){
+		            case "left":  
+		                _chart.margins().left += d3.event.dx;  
+		                _chart.margins().left = dc.utils.clamp(
+			                _chart.margins().left, MIN_MARGIN_SIZE,
+			                _chart.width()-_chart.margins().right-MIN_MARGIN_SIZE);
+		                break;
+		            case "right":  
+		                _chart.margins().right -= d3.event.dx; 
+		                _chart.margins().right = dc.utils.clamp(
+			                _chart.margins().right, MIN_MARGIN_SIZE,
+			                _chart.width()-_chart.margins().left-MIN_MARGIN_SIZE);
+		                break;
+		            case "top":  
+		                _chart.margins().top += d3.event.dy; 
+		                _chart.margins().top = dc.utils.clamp(
+			                _chart.margins().top, MIN_MARGIN_SIZE,
+			                _chart.height()-_chart.margins().bottom-MIN_MARGIN_SIZE);
+		                break;
+		            case "bottom":  
+		                _chart.margins().bottom -= d3.event.dy; 
+		                _chart.margins().bottom = dc.utils.clamp(
+			                _chart.margins().bottom, MIN_MARGIN_SIZE,
+			                _chart.height()-_chart.margins().top-MIN_MARGIN_SIZE);
+		                break;
+		            }
+
+		            if (activeMargin) _chart.render();
+		            return;
+	            })
+	            .on("dragend", function(){ _chart.dragObject = null; });
+	    
+	    _chart.svg().call(drag);
+
+	    // change cursor depending on the region 
+	    _chart.svg().on("mousemove", function(){
+	        var m = detectMargins(d3.event);
+	        var el = d3.select(this);
+	        if (_chart.dragObject)
+		        el.style("cursor", "move");
+	        else switch (m) {
+	        case "left": el.style("cursor", "e-resize"); break;
+	        case "right": el.style("cursor", "w-resize"); break;
+	        case "bottom": el.style("cursor", "n-resize"); break;
+	        case "top": el.style("cursor", "s-resize"); break;
+	        default: el.style("cursor", "default");
+	        }
+	    });
 
         _chart._preprocessData();
 
@@ -2942,6 +3037,9 @@ dc.coordinateGridMixin = function (_chart) {
 
     _chart._doRedraw = function () {
         _chart._preprocessData();
+        
+        if (_chart.elasticColor())
+	        _chart.calculateColorDomain();
 
         drawChart(false);
         generateClipPath();
@@ -3745,6 +3843,7 @@ dc.pieChart = function (parent, chartGroup) {
     var _emptyTitle = 'empty';
 
     var _radius,
+        _autoRadius = true,
         _innerRadius = 0;
 
     var _g;
@@ -3788,7 +3887,12 @@ dc.pieChart = function (parent, chartGroup) {
 
     function drawChart() {
         // set radius on basis of chart dimension if missing
-        _radius = _radius ? _radius : d3.min([_chart.width(), _chart.height()]) / 2;
+
+        _radius = !_autoRadius && _radius ? _radius : d3.min([_chart.width(), _chart.height()]) /2;
+
+	    // recompute colors if needed
+	    if (_chart.elasticColor())
+	        _chart.calculateColorDomain();
 
         var arc = buildArcs();
 
@@ -3972,7 +4076,7 @@ dc.pieChart = function (parent, chartGroup) {
     /**
     #### .radius([radius])
     Get or set the outer radius. If the radius is not set, it will be half of the minimum of the
-    chart width and height.
+    chart width and height. Default radius is auto radius if set to 0, activates auto radius computation
 
     **/
     _chart.radius = function (r) {
@@ -3980,6 +4084,7 @@ dc.pieChart = function (parent, chartGroup) {
             return _radius;
         }
         _radius = r;
+        _autoRadius = (_radius == 0);
         return _chart;
     };
 
@@ -4543,6 +4648,8 @@ dc.lineChart = function (parent, chartGroup) {
         }
 
         var layers = layersList.selectAll('g.stack').data(_chart.data());
+        
+        layers.exit().remove();
 
         var layersEnter = layers
             .enter()
@@ -7221,6 +7328,7 @@ Examples:
 **/
 dc.legend = function () {
     var LABEL_GAP = 2;
+    var LABEL_MARGIN = 20;
 
     var _legend = {},
         _parent,
@@ -7228,6 +7336,8 @@ dc.legend = function () {
         _y = 0,
         _itemHeight = 12,
         _gap = 5,
+        _areaWidth = 100,
+        _areaHeight = 100,
         _horizontal = false,
         _legendWidth = 560,
         _itemWidth = 70,
@@ -7245,9 +7355,14 @@ dc.legend = function () {
 
     _legend.render = function () {
         _parent.svg().select('g.dc-legend').remove();
+
         _g = _parent.svg().append('g')
             .attr('class', 'dc-legend')
-            .attr('transform', 'translate(' + _x + ',' + _y + ')');
+            .attr('transform', 'translate(' + _x + ',' + _y + ')')
+            .on("mousedown", function(){
+                _parent.dragObject = _legend;
+            });
+
         var legendables = _parent.legendables();
 
         var itemEnter = _g.selectAll('g.dc-legend-item')
@@ -7342,6 +7457,42 @@ dc.legend = function () {
         }
         _y = y;
         return _legend;
+    };
+
+    /**
+    ### .areaWidth(width)
+    Set the width of the area in which the legend gets displayed 
+    **/
+    _legend.areaWidth = function (_) {
+        if (!arguments.length) return _areaWidth;
+	_x = _x / _areaWidth * _;
+        _areaWidth = _;
+        return _legend;
+    };
+
+    /**
+    ### .areaHeight(width)
+    Set the width of the area in which the legend gets displayed 
+    **/
+    _legend.areaHeight = function (_) {
+        if (!arguments.length) return _areaHeight;
+	_y = _y / _areaHeight * _;
+        _areaHeight = _;
+
+        return _legend;
+    };
+
+    /**
+    ### .moveBy(dx, dy)
+    Move legend by given increment
+    **/
+    _legend.moveBy = function (dx, dy){
+	    _x += dx;
+	    _y += dy;
+	    _x = dc.utils.clamp(_x|0, 0, _areaWidth-LABEL_MARGIN);
+	    _y = dc.utils.clamp(_y|0, 0, _areaHeight-LABEL_MARGIN);
+	    if (_g)
+	        _g.attr("transform", "translate(" + _x + "," + _y + ")");
     };
 
     /**

@@ -10,6 +10,7 @@ dc.colorMixin = function (_chart) {
     var _defaultAccessor = true;
 
     var _colorAccessor = function (d) { return _chart.keyAccessor()(d); };
+    var _cElasticity = false;
 
     /**
     #### .colors([colorScale])
@@ -81,6 +82,19 @@ dc.colorMixin = function (_chart) {
         _defaultAccessor = false;
         return _chart;
     };
+
+    /**
+    #### .elasticC([boolean])
+    Turn on/off elastic colors. If color elasticity is turned on, then the color chart will attempt to generate and
+    recalculate color range whenever redraw event is triggered.
+
+    **/
+    _chart.elasticColor = function (_) {
+        if (!arguments.length) return _cElasticity;
+        _cElasticity = _;
+        return _chart;
+    };
+
 
     // what is this?
     _chart.defaultColorAccessor = function () {

@@ -617,6 +617,10 @@ accessor.
 .colorAccessor(function (d){return d.value.absGain;})
 ```
 
+#### .elasticC([boolean])
+Turn on/off elastic colors. If color elasticity is turned on, then the color chart will attempt to generate and
+recalculate color range whenever redraw event is triggered.
+
 #### .colorDomain([domain])
 Set or get the current domain for the color mapping function. The domain must be supplied as an
 array.
@@ -988,7 +992,7 @@ pie chart will be rendered as a doughnut chart. Default inner radius is 0px.
 
 #### .radius([radius])
 Get or set the outer radius. If the radius is not set, it will be half of the minimum of the
-chart width and height.
+chart width and height. Default radius is auto radius if set to 0, activates auto radius computation
 
 #### .cx([cx])
 Get or set center x coordinate position. Default is center of svg.
@@ -1788,6 +1792,15 @@ Set or get x coordinate for legend widget. Default: 0.
 
 #### .y([value])
 Set or get y coordinate for legend widget. Default: 0.
+
+### .areaWidth(width)
+Set the width of the area in which the legend gets displayed
+
+### .areaHeight(width)
+Set the width of the area in which the legend gets displayed
+
+### .moveBy(dx, dy)
+Move legend by given increment
 
 #### .gap([value])
 Set or get gap between legend items. Default: 5.
